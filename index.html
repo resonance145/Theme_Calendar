@@ -3194,7 +3194,7 @@ async function setBanner(tabId) {
   const dataUrl = await window.api.pickImage({ max: 1600, alpha: false })
   if (!dataUrl) return
   const td = getTabData(tabId)
-  Object.assign(td, { banner: dataUrl, bannerX: 50, bannerY: 50, bannerScale: 1, bannerTX: 0, bannerTY: 0, bannerFixed: false })
+  Object.assign(td, { banner: dataUrl, bannerX: 50, bannerY: 50, bannerScale: 1, bannerTX: 0, bannerTY: 0, bannerFit: 'contain', bannerFixed: false })
   save()
   if (curTabId === tabId) buildRightPanel()
 }
@@ -3203,7 +3203,7 @@ function clearBanner(tabId) {
   const td = getTabData(tabId)
   if (!td.banner) return
   pushUndo('배너 삭제')
-  Object.assign(td, { banner: null, bannerX: 50, bannerY: 50, bannerScale: 1, bannerTX: 0, bannerTY: 0, bannerFixed: false })
+  Object.assign(td, { banner: null, bannerX: 50, bannerY: 50, bannerScale: 1, bannerTX: 0, bannerTY: 0, bannerFit: null, bannerFixed: false })
   save()
   if (curTabId === tabId) buildRightPanel()
   undoToast('배너를 지웠어요')
@@ -3226,6 +3226,9 @@ function renderBanner(bannerEl, tabId, td) {
   }
 
   const img = document.createElement('img')
+  // 풀샷: 새로 가져온 이미지는 잘리지 않고 전체가 보이게 시작 (이전 배너는 기존 방식 유지)
+  const fit = td.bannerFit === 'contain'
+  if (fit) img.style.objectFit = 'contain'
   img.src = td.banner
   img.draggable = false
   img.alt = ''
@@ -3235,14 +3238,15 @@ function renderBanner(bannerEl, tabId, td) {
     const c = view / 2
     const lo = view - c - s * (off + size - c)   // 오른쪽(아래쪽) 끝이 비지 않을 한계
     const hi = s * (c - off) - c                 // 왼쪽(위쪽) 끝이 비지 않을 한계
-    return lo > hi ? (lo + hi) / 2 : Math.max(lo, Math.min(hi, t))
+    // 이미지가 배너보다 크면 빈 곳이 안 보이게, 작으면(풀샷) 배너 밖으로 안 나가게 제한
+    return Math.max(Math.min(lo, hi), Math.min(Math.max(lo, hi), t))
   }
   const clampT = () => {
     const W = bannerEl.clientWidth, H = bannerEl.clientHeight
     const nw = img.naturalWidth, nh = img.naturalHeight
     if (!W || !H || !nw || !nh) return
     const s = td.bannerScale ?? 1
-    const c = Math.max(W / nw, H / nh)
+    const c = fit ? Math.min(W / nw, H / nh) : Math.max(W / nw, H / nh)
     const w = nw * c, h = nh * c
     const offX = -(w - W) * (td.bannerX ?? 50) / 100
     const offY = -(h - H) * (td.bannerY ?? 50) / 100
@@ -3313,7 +3317,7 @@ function renderBanner(bannerEl, tabId, td) {
   bannerEl.appendChild(overlay)
 
   const zoom = dir => {
-    td.bannerScale = Math.max(0.3, Math.min(3, +(((td.bannerScale ?? 1) + dir * 0.1).toFixed(2))))
+    td.bannerScale = Math.max(0.3, Math.min(8, +(((td.bannerScale ?? 1) + dir * (td.bannerScale >= 2 ? 0.25 : 0.1)).toFixed(2))))
     apply()
   }
   overlay.querySelectorAll('.banner-zoom-btn').forEach(b =>
