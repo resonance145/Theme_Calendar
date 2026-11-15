@@ -963,8 +963,8 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 
 /* 배너 도구 */
 .banner-area.has-img { cursor: default; }
-.banner-tools { position:absolute; top:6px; right:6px; display:flex; gap:4px; opacity:0; transition: opacity .15s; }
-.banner-area:hover .banner-tools, .banner-tools:focus-within { opacity:1; }
+.banner-tools { position:absolute; top:6px; right:6px; display:flex; gap:4px; opacity:0; pointer-events:none; transition: opacity .15s; }
+.banner-tools.show { opacity:1; pointer-events:auto; }
 .banner-tools button { width:28px; height:28px; border:none; border-radius:50%; cursor:pointer;
   background: rgba(0,0,0,.45); color:#fff; font-size:12px; display:flex; align-items:center; justify-content:center; }
 .banner-tools button:hover { background: rgba(0,0,0,.65); }
@@ -1007,9 +1007,8 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 
 input[type="date"].field-input { min-height: 34px; }
 
-/* ── 터치 기기: 손가락 크기에 맞춘 핸들, 배너 도구 항상 표시 ── */
+/* ── 터치 기기: 손가락 크기에 맞춘 핸들 ── */
 @media (hover: none), (pointer: coarse) {
-  .banner-tools { opacity: 1; }
   .resize-handle { width: 20px; height: 20px; }
   .resize-handle.se { bottom: -10px; right: -10px; }
   .resize-handle.sw { bottom: -10px; left:  -10px; }
@@ -3228,11 +3227,13 @@ function renderBanner(bannerEl, tabId, td) {
   }
   apply()
   bannerEl.appendChild(img)
-  bannerEl.addEventListener('contextmenu', e => { e.preventDefault(); clearBanner(tabId) }, sig)
+  let tools = null   // 고정 모드에서만 생기는 도구 버튼 묶음 (우클릭으로 표시)
+  const toggleTools = () => { if (tools) tools.classList.toggle('show') }
+  bannerEl.addEventListener('contextmenu', e => { e.preventDefault(); toggleTools() }, sig)
 
   if (td.bannerFixed) {
-    // 고정 모드: 작은 도구 버튼 (마우스를 올리면 / 터치 기기에선 항상)
-    const tools = document.createElement('div')
+    // 고정 모드: 작은 도구 버튼 (평소엔 숨김, 배너를 우클릭하면 표시 / 터치는 길게 누르기)
+    tools = document.createElement('div')
     tools.className = 'banner-tools'
     ;[
       ['move', '위치 조정', () => { td.bannerFixed = false; save(); renderBanner(bannerEl, tabId, td) }],
@@ -3245,6 +3246,23 @@ function renderBanner(bannerEl, tabId, td) {
       tools.appendChild(b)
     })
     bannerEl.appendChild(tools)
+
+    // 버튼 밖을 누르거나 Esc를 누르면 다시 숨김
+    document.addEventListener('pointerdown', e => {
+      if (tools.classList.contains('show') && !tools.contains(e.target)) tools.classList.remove('show')
+    }, { capture: true, signal: _bannerAC.signal })
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') tools.classList.remove('show')
+    }, sig)
+
+    // 우클릭이 없는 터치 기기: 배너를 길게 누르면 표시
+    let lp = null
+    const cancelLP = () => { clearTimeout(lp); lp = null }
+    bannerEl.addEventListener('pointerdown', e => {
+      if (e.pointerType !== 'touch' || tools.contains(e.target)) return
+      lp = setTimeout(() => { lp = null; tools.classList.add('show') }, 500)
+    }, sig)
+    ;['pointerup', 'pointercancel', 'pointermove'].forEach(t => bannerEl.addEventListener(t, cancelLP, sig))
     return
   }
 
