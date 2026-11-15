@@ -1555,6 +1555,7 @@ body.stamp-erase .cal-card { box-shadow: 0 0 0 3px rgba(217,83,79,.35), var(--sh
 .event-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px; }
 .event-opts label { display: flex; flex-direction: column; }
 .event-opts select { width: 100%; }
+.event-opts.single { grid-template-columns: 1fr; }
 
 /* ══════════ 알림의 되돌리기 버튼 ══════════ */
 .toast { display: flex; align-items: center; gap: 12px; }
@@ -1856,7 +1857,7 @@ body.capturing-cal .right-panel { opacity: 0 !important; }
           <option value="yearly">매년 (생일·기념일)</option>
         </select>
       </label>
-      <label><span class="field-label">탭</span>
+      <label id="eventTabLabel"><span class="field-label">탭</span>
         <select id="eventTab" class="field-input"></select>
       </label>
     </div>
@@ -2890,9 +2891,16 @@ function getDueTodos(dk, opts = {}) {
 }
 
 function renderTabColorChips() {
-  renderPaletteSwatches(document.getElementById('eventPalette'), DATA.tabs.find(t => t.id === curTabId), setEventColor)
+  const curTab = DATA.tabs.find(t => t.id === curTabId)
+  renderPaletteSwatches(document.getElementById('eventPalette'), curTab, setEventColor)
   const wrap = document.getElementById('eventTabColors')
   wrap.innerHTML = ''
+  // 캐릭터 탭에선 다른 탭의 색·탭 선택이 필요 없으니 숨기고, 전체 탭에서만 보여준다
+  const inChar = !!curTab && !curTab.is_all
+  wrap.classList.toggle('hidden', inChar)
+  document.getElementById('eventTabLabel').classList.toggle('hidden', inChar)
+  document.querySelector('#eventModal .event-opts').classList.toggle('single', inChar)
+  if (inChar) { markSwatch('#eventPalette, #eventTabColors', eventColor); return }
   DATA.tabs.filter(t => !t.is_all).forEach(tab => {
     const btn = document.createElement('button')
     btn.className = 'tab-color-chip'
@@ -3186,7 +3194,7 @@ async function setBanner(tabId) {
   const dataUrl = await window.api.pickImage({ max: 1600, alpha: false })
   if (!dataUrl) return
   const td = getTabData(tabId)
-  Object.assign(td, { banner: dataUrl, bannerX: 50, bannerY: 50, bannerScale: 1, bannerFixed: false })
+  Object.assign(td, { banner: dataUrl, bannerX: 50, bannerY: 50, bannerScale: 1, bannerTX: 0, bannerTY: 0, bannerFixed: false })
   save()
   if (curTabId === tabId) buildRightPanel()
 }
@@ -3195,7 +3203,7 @@ function clearBanner(tabId) {
   const td = getTabData(tabId)
   if (!td.banner) return
   pushUndo('배너 삭제')
-  Object.assign(td, { banner: null, bannerX: 50, bannerY: 50, bannerScale: 1, bannerFixed: false })
+  Object.assign(td, { banner: null, bannerX: 50, bannerY: 50, bannerScale: 1, bannerTX: 0, bannerTY: 0, bannerFixed: false })
   save()
   if (curTabId === tabId) buildRightPanel()
   undoToast('배너를 지웠어요')
@@ -3221,11 +3229,35 @@ function renderBanner(bannerEl, tabId, td) {
   img.src = td.banner
   img.draggable = false
   img.alt = ''
+  // 확대한 상태에서도 자유롭게 옮길 수 있도록, 위치는 translate(배너 크기 대비 비율)로 저장.
+  // 이미지가 배너를 벗어나 빈 곳이 보이지 않는 범위 안으로만 제한한다.
+  const clampAxis = (t, view, size, off, s) => {
+    const c = view / 2
+    const lo = view - c - s * (off + size - c)   // 오른쪽(아래쪽) 끝이 비지 않을 한계
+    const hi = s * (c - off) - c                 // 왼쪽(위쪽) 끝이 비지 않을 한계
+    return lo > hi ? (lo + hi) / 2 : Math.max(lo, Math.min(hi, t))
+  }
+  const clampT = () => {
+    const W = bannerEl.clientWidth, H = bannerEl.clientHeight
+    const nw = img.naturalWidth, nh = img.naturalHeight
+    if (!W || !H || !nw || !nh) return
+    const s = td.bannerScale ?? 1
+    const c = Math.max(W / nw, H / nh)
+    const w = nw * c, h = nh * c
+    const offX = -(w - W) * (td.bannerX ?? 50) / 100
+    const offY = -(h - H) * (td.bannerY ?? 50) / 100
+    td.bannerTX = clampAxis((td.bannerTX ?? 0) * W, W, w, offX, s) / W
+    td.bannerTY = clampAxis((td.bannerTY ?? 0) * H, H, h, offY, s) / H
+  }
   const apply = () => {
+    clampT()
+    const W = bannerEl.clientWidth, H = bannerEl.clientHeight
     img.style.objectPosition = `${td.bannerX ?? 50}% ${td.bannerY ?? 50}%`
-    img.style.transform = `scale(${td.bannerScale ?? 1})`
+    img.style.transform =
+      `translate(${(td.bannerTX ?? 0) * W}px, ${(td.bannerTY ?? 0) * H}px) scale(${td.bannerScale ?? 1})`
   }
   apply()
+  img.addEventListener('load', apply, sig)
   bannerEl.appendChild(img)
   let tools = null   // 고정 모드에서만 생기는 도구 버튼 묶음 (우클릭으로 표시)
   const toggleTools = () => { if (tools) tools.classList.toggle('show') }
@@ -3298,16 +3330,18 @@ function renderBanner(bannerEl, tabId, td) {
     if (e.button !== 0) return
     e.preventDefault()
     img.setPointerCapture(e.pointerId)
-    drag = { x: e.clientX, y: e.clientY, px: td.bannerX ?? 50, py: td.bannerY ?? 50 }
+    drag = { x: e.clientX, y: e.clientY, tx: td.bannerTX ?? 0, ty: td.bannerTY ?? 0 }
     img.style.cursor = 'grabbing'
+    img.style.transition = 'none'   // 드래그 중엔 손에 바로 붙어 움직이게
   })
   img.addEventListener('pointermove', e => {
     if (!drag) return
-    td.bannerX = Math.max(0, Math.min(100, drag.px - (e.clientX - drag.x) * 0.3))
-    td.bannerY = Math.max(0, Math.min(100, drag.py - (e.clientY - drag.y) * 0.3))
+    const W = bannerEl.clientWidth || 1, H = bannerEl.clientHeight || 1
+    td.bannerTX = drag.tx + (e.clientX - drag.x) / W
+    td.bannerTY = drag.ty + (e.clientY - drag.y) / H
     apply()
   })
-  const end = () => { if (!drag) return; drag = null; img.style.cursor = 'grab'; save() }
+  const end = () => { if (!drag) return; drag = null; img.style.cursor = 'grab'; img.style.transition = ''; save() }
   img.addEventListener('pointerup', end)
   img.addEventListener('pointercancel', end)
 
