@@ -1956,7 +1956,7 @@ body.capturing-cal .right-panel { opacity: 0 !important; }
     <p class="section-label">사용자 지정 테마</p>
     <p style="font-size:11px;color:var(--muted);margin-bottom:8px">
       현재 탭 <b id="themeTabName"></b> 의 테마를 설정해요.
-      탭마다 따로 저장돼요!<br>
+      전체 탭과 캐릭터 탭마다 따로 저장돼요!<br>
       아래에서 색 조합을 고르면 강조색까지 함께 바뀌어요. 강조색만 바꾸려면 <b>탭 관리</b>에서!
     </p>
     <div class="autotheme" id="autoTheme">
@@ -3443,7 +3443,7 @@ function openSettings() {
   renderChipPicker()
   const tab = DATA.tabs.find(t => t.id === curTabId)
   const nameEl = document.getElementById('themeTabName')
-  if (nameEl) nameEl.textContent = (tab && !tab.is_all) ? `[${tab.name}]` : '[전체 탭 - 적용 불가]'
+  if (nameEl) nameEl.textContent = tab ? `[${tab.name}]` : ''
   const toggle = document.getElementById('stickerIgnoreToggle')
   if (toggle) toggle.checked = !!(DATA.settings && DATA.settings.stickerIgnore)
   if (window.refreshBackupInfo) refreshBackupInfo()
@@ -3498,8 +3498,8 @@ function initThemeGrid() {
   const grid = document.getElementById('themeGrid')
   const tab = DATA.tabs.find(t => t.id === curTabId)
   grid.innerHTML = ''
-  grid.classList.toggle('disabled', !tab || tab.is_all)
-  if (!tab || tab.is_all) { grid.innerHTML = '<p class="seed-empty">캐릭터 탭을 선택하면 바꿀 수 있어요</p>'; return }
+  grid.classList.toggle('disabled', !tab)
+  if (!tab) { grid.innerHTML = '<p class="seed-empty">탭을 선택하면 바꿀 수 있어요</p>'; return }
   const vals = themeValues(tab)
   const mine = {}
   ;(tab.themeMine || []).forEach(([slot, c]) => { const k = MINE_TO_KEY[slot]; if (k) mine[k] = c })
@@ -3533,10 +3533,7 @@ function initThemeGrid() {
 
 document.getElementById('applyThemeBtn').addEventListener('click', () => {
   const tab = DATA.tabs.find(t => t.id === curTabId)
-  if (!tab || tab.is_all) {
-    alert('캐릭터 탭을 선택한 상태에서 설정해주세요!')
-    return
-  }
+  if (!tab) return
   const theme = { ...(tab.theme || {}) }
   for (const k of THEME_KEYS) {
     const el = document.getElementById('thx_' + k)
@@ -3558,7 +3555,7 @@ document.getElementById('applyThemeBtn').addEventListener('click', () => {
 
 document.getElementById('resetThemeBtn').addEventListener('click', () => {
   const tab = DATA.tabs.find(t => t.id === curTabId)
-  if (tab && !tab.is_all) {
+  if (tab) {
     tab.theme = {}
     delete tab.themeMine
     save()
@@ -4215,7 +4212,7 @@ function generateThemeCandidates(seedHexes) {
   const nH = warm ? 78 : green ? 105 : 255
   const nC = warm ? 0.012 : green ? 0.01 : 0.008
   const nt = (l, c) => oklchToHex(l, c, nH)
-  const palette = buildPalette(seedHexes, labelTone(curCharTab()))
+  const palette = buildPalette(seedHexes, labelTone(curThemeTab()))
   // 포인트 색이 없으면 ★색 반대편의 차분한(채도 낮은) 색
   const point = pointSeed || oklchToHex(0.66, Math.min(Math.max(mo.C, 0.12), 0.16), (mo.H + 150) % 360)   // 포인트는 또렷하게
 
@@ -4327,10 +4324,14 @@ function curCharTab() {
   const tab = DATA.tabs.find(t => t.id === curTabId)
   return tab && !tab.is_all ? tab : null
 }
+// 색 테마를 바꿀 탭: 캐릭터 탭 + 전체 탭
+function curThemeTab() {
+  return DATA.tabs.find(t => t.id === curTabId) || null
+}
 
 function renderAutoTheme() {
   const box = document.getElementById('autoTheme')
-  const tab = curCharTab()
+  const tab = curThemeTab()
   box.classList.toggle('disabled', !tab)
   document.getElementById('themeCands').innerHTML = ''
   document.getElementById('undoThemeBtn').classList.toggle('hidden', !(_themeUndo && tab && _themeUndo.tabId === tab.id))
@@ -4342,7 +4343,7 @@ function renderAutoTheme() {
 }
 
 function renderSeeds() {
-  const tab = curCharTab(); if (!tab) return
+  const tab = curThemeTab(); if (!tab) return
   const row = document.getElementById('seedRow')
   row.innerHTML = ''
   tab.seedColors.forEach((hex, i) => {
@@ -4409,7 +4410,7 @@ function renderSeeds() {
 
 // 라벨 색 톤 고르기 + 미리보기. 바꾸면 추천 색에서 고른 기존 라벨도 같은 자리의 새 색으로
 function renderLabelTone() {
-  const tab = curCharTab()
+  const tab = curThemeTab()
   const box = document.getElementById('labelTone')
   box.innerHTML = ''
   if (!tab) return
@@ -4447,7 +4448,7 @@ function setLabelTone(tab, tone) {
 }
 
 function renderCandidates() {
-  const tab = curCharTab(); if (!tab) return
+  const tab = curThemeTab(); if (!tab) return
   const wrap = document.getElementById('themeCands')
   wrap.innerHTML = ''
   generateThemeCandidates(tab.seedColors).forEach(cand => {
@@ -4508,7 +4509,7 @@ function refreshAfterThemeChange() {
 
 document.getElementById('genThemeBtn').addEventListener('click', renderCandidates)
 document.getElementById('undoThemeBtn').addEventListener('click', () => {
-  const tab = curCharTab()
+  const tab = curThemeTab()
   if (!tab || !_themeUndo || _themeUndo.tabId !== tab.id) return
   _gridBefore = Object.fromEntries(Object.entries(themeValues(tab)).map(([k, v]) => [k, v[0]]))
   tab.theme = _themeUndo.theme; tab.color = _themeUndo.color
@@ -4521,7 +4522,7 @@ document.getElementById('undoThemeBtn').addEventListener('click', () => {
   showToast('원래 테마로 되돌렸어요')
 })
 document.getElementById('seedFromBanner').addEventListener('click', async () => {
-  const tab = curCharTab(); if (!tab) return
+  const tab = curThemeTab(); if (!tab) return
   const src = getTabData(tab.id).banner
   if (!src) return
   try {
