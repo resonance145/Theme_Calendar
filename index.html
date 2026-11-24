@@ -973,7 +973,16 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
   color:#333; font-size:15px; cursor:pointer; line-height:1; }
 
 /* 스티커: 터치로 움직일 수 있게 + 무시 모드에선 클릭 통과 */
-.sticker-stage { position: absolute; width: 0; height: 0; overflow: visible; }
+body { position: relative; }
+.todo-grip { flex: none; width: 14px; margin-right: 2px; color: var(--muted); opacity: .55; cursor: grab; text-align: center;
+  font-size: 13px; line-height: 1; letter-spacing: -2px; user-select: none; touch-action: none; }
+.todo-card:hover .todo-grip { opacity: 1; }
+.todo-card { cursor: grab; }
+.todo-card button, .todo-card input, .todo-card a { cursor: pointer; }
+.todo-card.todo-dragging { position: relative; z-index: 5; opacity: .9; cursor: grabbing; box-shadow: 0 8px 22px rgba(0,0,0,.22); transition: none !important; }
+.todo-drop-line { position: absolute; left: 6px; right: 6px; height: 3px; border-radius: 2px; background: var(--accent); pointer-events: none; z-index: 6; }
+.sticker-clip { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 200; }
+.sticker-stage { position: absolute; top: 0; width: 0; height: 0; overflow: visible; }
 .sticker-stage.ignore .sticker-wrap { pointer-events: none; }
 .sticker-wrap img, .resize-handle, .rotate-handle, .menu-handle { touch-action: none; }
 .sticker-wrap .resize-handle, .sticker-wrap .rotate-handle, .sticker-wrap .menu-handle { display: none; }
@@ -2077,7 +2086,7 @@ body.capturing-cal .right-panel { opacity: 0 !important; }
 </div>
 
 <!-- 스티커 스테이지: 앱 전체 위에 떠있음 -->
-<div class="sticker-stage" id="stickerStage"></div>
+<div class="sticker-clip" id="stickerClip"><div class="sticker-stage" id="stickerStage"></div></div>
 
 <script>
 /*! html-to-image v1.11.11 | MIT License | (c) 2017-2023 W.Y. */
@@ -2980,7 +2989,7 @@ function sortedTodos(todos) {
 function buildSortToggle() {
   const b = document.createElement('button')
   b.className = 'sort-toggle'
-  b.innerHTML = iconLabel('sort', getTodoSort() === 'due' ? '마감순' : '등록순', 12)
+  b.innerHTML = iconLabel('sort', getTodoSort() === 'due' ? '마감순' : '내 순서', 12)
   b.title = '정렬 바꾸기'
   b.addEventListener('click', () => {
     if (!DATA.settings) DATA.settings = {}
@@ -3065,7 +3074,9 @@ function buildCharView(panel, tab) {
     scroll.innerHTML = '<p style="text-align:center;color:var(--muted);margin-top:30px">할 일을 추가해보세요</p>'
   } else {
     sortedTodos(td.todos).forEach(todo => {
-      scroll.appendChild(buildTodoCard(todo, tab.id, tab.color, false))
+      const card = buildTodoCard(todo, tab.id, tab.color, false)
+      scroll.appendChild(card)
+      enableTodoDrag(card, todo, td, scroll)
     })
   }
 
@@ -3085,6 +3096,67 @@ function ddayOf(end) {
   const [y, m, d] = ds.split('-').map(Number)
   const t = new Date(); t.setHours(0, 0, 0, 0)
   return Math.round((new Date(y, m - 1, d) - t) / 86400000)
+}
+
+// ── 할 일 순서 바꾸기 (끌어서 놓기) ──────────
+// 마우스: 카드 아무 데나 끌기 / 터치: 왼쪽 ⋮⋮ 손잡이를 끌기 (그래야 스크롤과 안 겹침)
+function enableTodoDrag(card, todo, td, scroll) {
+  card._todo = todo
+  scroll.style.position = 'relative'
+  let g = null, marker = null
+  const cleanup = () => {
+    if (marker) marker.remove(); marker = null
+    card.classList.remove('todo-dragging'); card.style.transform = ''
+    document.body.classList.remove('dnd-on')
+    g = null
+  }
+  card.addEventListener('pointerdown', e => {
+    if (e.button !== 0 || e.target.closest('button, input, a, select, textarea')) return
+    if (e.pointerType === 'touch' && !e.target.closest('.todo-grip')) return
+    g = { id: e.pointerId, x: e.clientX, y: e.clientY, on: false, before: null, s0: 0 }
+  })
+  card.addEventListener('pointermove', e => {
+    if (!g || e.pointerId !== g.id) return
+    const dy = e.clientY - g.y
+    if (!g.on) {
+      if (Math.hypot(e.clientX - g.x, dy) < 6) return
+      g.on = true; g.s0 = scroll.scrollTop
+      try { card.setPointerCapture(e.pointerId) } catch (_) {}
+      card.classList.add('todo-dragging'); document.body.classList.add('dnd-on')
+      const sel = window.getSelection && window.getSelection(); if (sel) sel.removeAllRanges()
+      marker = document.createElement('div'); marker.className = 'todo-drop-line'; scroll.appendChild(marker)
+    }
+    e.preventDefault()
+    const r = scroll.getBoundingClientRect()
+    if (e.clientY < r.top + 28) scroll.scrollTop -= 10
+    else if (e.clientY > r.bottom - 28) scroll.scrollTop += 10
+    card.style.transform = `translateY(${dy + (scroll.scrollTop - g.s0)}px)`
+    const others = [...scroll.querySelectorAll('.todo-card')].filter(c => c !== card)
+    g.before = null
+    for (const c of others) { const cr = c.getBoundingClientRect(); if (e.clientY < cr.top + cr.height / 2) { g.before = c; break } }
+    const last = others[others.length - 1]
+    marker.style.top = (g.before ? g.before.offsetTop - 3 : last ? last.offsetTop + last.offsetHeight + 1 : 0) + 'px'
+  })
+  const finish = e => {
+    if (!g || e.pointerId !== g.id) return
+    const was = g.on, before = g.before
+    cleanup()
+    if (!was || e.type === 'pointercancel') return
+    const cards = [...scroll.querySelectorAll('.todo-card')]
+    const order = cards.filter(c => c !== card).map(c => c._todo)
+    const at = before ? order.indexOf(before._todo) : order.length
+    order.splice(at, 0, todo)
+    if (order.every((t, i) => t === cards[i]._todo)) return   // 제자리
+    td.todos.splice(0, td.todos.length, ...order)
+    if (getTodoSort() === 'due') {
+      if (!DATA.settings) DATA.settings = {}
+      DATA.settings.todoSort = 'added'
+      showToast('끌어서 정한 순서로 보여줄게요 (정렬: 내 순서)')
+    }
+    save(); buildRightPanel()
+  }
+  card.addEventListener('pointerup', finish)
+  card.addEventListener('pointercancel', finish)
 }
 
 // ── 할일 카드 빌드 ──────────────────────────
@@ -3114,6 +3186,11 @@ function buildTodoCard(todo, tabId, color, readonly) {
   titleEl.title = todo.title
 
   if (!readonly) {
+    const grip = document.createElement('span')
+    grip.className = 'todo-grip'
+    grip.textContent = '⋮⋮'
+    grip.title = '끌어서 순서 바꾸기'
+    top.appendChild(grip)
     const chk = document.createElement('input')
     chk.type  = 'checkbox'
     chk.className = 'todo-check'
@@ -3755,12 +3832,11 @@ function renderStickers() {
   const td = getTabData(curTabId)
   const off = contentOffset()
   stage.style.left = off + 'px'
-  const maxX = Math.max(0, document.documentElement.clientWidth - off - 40)
   ;(td.stickers || []).forEach((st, idx) => {
     st.w = st.w || 90; st.h = st.h || 90
     st.x = st.x ?? 60; st.y = st.y ?? 60
-    // 화면이 좁아서 밖으로 나간 스티커는 보이는 곳에 표시 (저장된 위치는 그대로, 움직이면 그때 반영)
-    const view = { ...st, x: Math.min(Math.max(st.x, 40 - st.w), maxX), y: Math.max(st.y, 0) }
+    // 창 밖으로 나간 스티커도 저장된 위치 그대로 둔다 (강제로 안쪽으로 옮기지 않음)
+    const view = st
     // 조작 시작 시 '지금 화면에 보이는 위치'를 기준으로 (마지막으로 그린 위치가 아니라)
     const sync = () => { st.x = parseFloat(wrap.style.left) || 0; st.y = parseFloat(wrap.style.top) || 0 }
 
