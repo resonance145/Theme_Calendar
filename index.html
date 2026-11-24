@@ -974,6 +974,26 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 
 /* 스티커: 터치로 움직일 수 있게 + 무시 모드에선 클릭 통과 */
 body { position: relative; }
+.rescue-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(68px, 1fr)); gap: 8px; margin: 6px 0 14px; }
+.rescue-item { position: relative; aspect-ratio: 1; border: 1px solid var(--line); border-radius: 10px; padding: 4px; cursor: pointer;
+  background: repeating-conic-gradient(rgba(0,0,0,.05) 0 25%, transparent 0 50%) 0 0 / 12px 12px, var(--paper); }
+.rescue-item img { width: 100%; height: 100%; object-fit: contain; display: block; pointer-events: none; }
+.rescue-item:hover { border-color: var(--accent); }
+.rescue-item.out { border-color: #e0a400; box-shadow: 0 0 0 2px rgba(240,198,74,.35); }
+.rescue-badge { position: absolute; left: 3px; top: 3px; font-size: 9px; line-height: 1.5; padding: 0 5px; border-radius: 6px; background: #e0a400; color: #fff; }
+.rescue-empty { grid-column: 1 / -1; font-size: 11px; color: var(--muted); }
+.stor-bar { display: flex; height: 10px; border-radius: 6px; overflow: hidden; background: var(--panel); border: 1px solid var(--line); margin: 8px 0 6px; }
+.stor-bar i { display: block; height: 100%; }
+.stor-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 11px; color: var(--muted); margin-bottom: 8px; }
+.stor-legend b { color: var(--text); font-weight: 600; }
+.stor-legend span::before { content: ''; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--c); margin-right: 4px; }
+.stor-quota { font-size: 11px; color: var(--muted); margin-bottom: 8px; }
+.stor-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-top: 1px solid var(--line); }
+.stor-row img { width: 36px; height: 36px; object-fit: cover; border-radius: 6px; border: 1px solid var(--line); flex: none;
+  background: repeating-conic-gradient(rgba(0,0,0,.05) 0 25%, transparent 0 50%) 0 0 / 8px 8px; }
+.stor-row .stor-name { flex: 1; min-width: 0; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stor-row .stor-size { font-size: 11px; color: var(--muted); flex: none; }
+.stor-row .stor-size.big { color: #d9534f; font-weight: 600; }
 .todo-grip { flex: none; width: 14px; margin-right: 2px; color: var(--muted); opacity: .55; cursor: grab; text-align: center;
   font-size: 13px; line-height: 1; letter-spacing: -2px; user-select: none; touch-action: none; }
 .todo-card:hover .todo-grip { opacity: 1; }
@@ -2016,6 +2036,10 @@ body.capturing-cal .right-panel { opacity: 0 !important; }
       </label>
     </div>
 
+    <p class="section-label">스티커 구출</p>
+    <p class="settings-note">창 밖으로 나가 잡을 수 없는 스티커를 골라서 화면 가운데로 가져와요. (현재 탭의 스티커)</p>
+    <div id="stickerRescue" class="rescue-grid"></div>
+
     <p class="section-label">도장</p>
     <p class="settings-note">달력 위쪽의 <b>도장</b> 버튼을 누르면 도장 서랍이 열려요. 내 도장 추가, 찍을 모양·위치, 지우개, 챌린지 만들기는 서랍에서 할 수 있어요. 기본 도장 색은 <b>테마 → 직접 고르기 → 도장 색</b>에서 바꿔요.</p>
     </div>
@@ -2048,6 +2072,8 @@ body.capturing-cal .right-panel { opacity: 0 !important; }
       </span>
       <button class="btn-ghost btn-sm" id="optimizeImgBtn">줄이기</button>
     </div>
+    <p class="section-label">저장 용량</p>
+    <div id="storagePanel"></div>
 
     <p class="section-label">이미지로 저장</p>
     <div class="settings-row">
@@ -3518,6 +3544,7 @@ function openSettings() {
   renderAutoTheme()
   renderSkinPicker()
   renderChipPicker()
+  renderStickerRescue()
   const tab = DATA.tabs.find(t => t.id === curTabId)
   const nameEl = document.getElementById('themeTabName')
   if (nameEl) nameEl.textContent = tab ? `[${tab.name}]` : ''
@@ -3946,10 +3973,50 @@ document.addEventListener('pointermove', e => {
   placeSticker(wrap, st)
 }, { passive: false })
 
+// 창 밖으로 나간 스티커를 골라서 화면 가운데로 가져오기
+function renderStickerRescue() {
+  const box = document.getElementById('stickerRescue')
+  if (!box) return
+  box.innerHTML = ''
+  const tab = DATA.tabs.find(t => t.id === curTabId)
+  if (!tab || tab.is_all) { box.innerHTML = '<span class="rescue-empty">캐릭터 탭에서 쓸 수 있어요</span>'; return }
+  const td = getTabData(curTabId)
+  const list = td.stickers || []
+  if (!list.length) { box.innerHTML = '<span class="rescue-empty">이 탭에는 스티커가 없어요</span>'; return }
+  const off = contentOffset()
+  const vl = window.scrollX - off, vt = window.scrollY
+  const vr = vl + window.innerWidth, vb = vt + window.innerHeight
+  const items = list.map((st, idx) => {
+    const w = st.w || 90, h = st.h || 90, x = st.x ?? 60, y = st.y ?? 60
+    const cx = x + w / 2, cy = y + h / 2
+    const centerOut = cx < vl || cx > vr || cy < vt || cy > vb
+    const partOut = x < vl || y < vt || x + w > vr || y + h > vb
+    return { st, idx, state: centerOut ? 'out' : partOut ? 'part' : '' }
+  })
+  // 창 밖에 있는 것부터 보여줌
+  const rank = { out: 0, part: 1, '': 2 }
+  items.sort((a, b) => rank[a.state] - rank[b.state] || a.idx - b.idx)
+  items.forEach(({ st, idx, state }) => {
+    const b = document.createElement('button')
+    b.className = 'rescue-item' + (state === 'out' ? ' out' : '')
+    b.title = state === 'out' ? '창 밖에 있어요 · 눌러서 가운데로 가져오기' : '눌러서 화면 가운데로 가져오기'
+    const img = document.createElement('img'); img.src = st.src; img.alt = ''
+    b.appendChild(img)
+    if (state) { const t = document.createElement('span'); t.className = 'rescue-badge'; t.textContent = state === 'out' ? '창 밖' : '걸침'; b.appendChild(t) }
+    b.addEventListener('click', () => {
+      const w = st.w || 90, h = st.h || 90
+      const { x, y } = nextStickerSpot(td, w, h)
+      st.w = w; st.h = h; st.x = x; st.y = y
+      _selIdx = idx
+      save(); hide('settingsModal'); renderStickers()
+      showToast('스티커를 화면 가운데로 가져왔어요')
+    })
+    box.appendChild(b)
+  })
+}
+
 function endStickerAction() {
   if (!_act) return
-  const st = getTabData(curTabId).stickers[_act.idx]
-  if (st) getTabData(curTabId).lastStickerPos = { x: st.x + st.w / 2, y: st.y + st.h / 2 }   // 다음 스티커는 이 근처에
   _act = null
   document.querySelectorAll('.sticker-wrap img.dragging').forEach(i => i.classList.remove('dragging'))
   save()
@@ -4145,19 +4212,10 @@ function darken(hex, f) {
 
 // 새 스티커 놓을 자리: 마지막으로 옮긴 스티커 옆(조금씩 비켜서). 그 자리가 지금 화면 밖이면 화면 가운데
 function nextStickerSpot(td, w, h) {
+  // 항상 지금 보이는 화면의 정중앙 (직전 스티커 위치와 상관없음)
   const off = contentOffset()
-  const view = { l: window.scrollX - off, t: window.scrollY, r: window.scrollX - off + window.innerWidth, b: window.scrollY + window.innerHeight }
-  let cx, cy
-  const last = td.lastStickerPos
-  if (last && last.x > view.l + 20 && last.x < view.r - 20 && last.y > view.t + 20 && last.y < view.b - 20) {
-    const n = (td.stickers || []).length % 6
-    cx = last.x + 28 + n * 6; cy = last.y + 28 + n * 6
-  } else {
-    const n = (td.stickers || []).length % 6
-    cx = (view.l + view.r) / 2 + n * 24; cy = view.t + window.innerHeight / 3 + n * 24
-  }
-  cx = Math.min(Math.max(cx, view.l + w / 2 + 10), view.r - w / 2 - 10)
-  cy = Math.min(Math.max(cy, view.t + h / 2 + 10), view.b - h / 2 - 10)
+  const cx = window.scrollX - off + window.innerWidth / 2
+  const cy = window.scrollY + window.innerHeight / 2
   return { x: Math.round(cx - w / 2), y: Math.round(cy - h / 2) }
 }
 
@@ -5651,6 +5709,92 @@ window.refreshBackupInfo = function () {
   document.getElementById('backupRemindSel').value = String(s.backupRemindDays ?? 14)
   const size = JSON.stringify(DATA).length
   document.getElementById('usageText').textContent = `현재 데이터 약 ${fmtSize(size)} · 큰 배너·스티커 이미지를 다시 압축해요`
+  renderStorage()
+}
+
+// ── 저장 용량 관리 ──
+function collectImages() {
+  const out = []
+  const tabName = id => (DATA.tabs.find(t => t.id === id) || {}).name || id
+  for (const [tid, td] of Object.entries(DATA.tab_data || {})) {
+    if (td.banner) out.push({ kind: 'banner', label: `[${tabName(tid)}] 배너`, src: td.banner, set: v => { td.banner = v },
+      remove: () => Object.assign(td, { banner: null, bannerX: 50, bannerY: 50, bannerScale: 1, bannerTX: 0, bannerTY: 0, bannerFit: null, bannerFixed: false }) })
+    ;(td.stickers || []).forEach((st, i) => out.push({ kind: 'sticker', label: `[${tabName(tid)}] 스티커 ${i + 1}`, src: st.src, st,
+      set: v => { st.src = v }, remove: () => { const k = td.stickers.indexOf(st); if (k >= 0) td.stickers.splice(k, 1) } }))
+  }
+  const walk = (obj, top) => {
+    for (const k of Object.keys(obj || {})) {
+      const v = obj[k]
+      if (typeof v === 'string' && v.startsWith('data:image/')) out.push({ kind: 'other', label: '기타 이미지 (' + k + ')', src: v, set: nv => { obj[k] = nv } })
+      else if (v && typeof v === 'object' && !(top && k === 'tab_data')) walk(v, false)
+    }
+  }
+  walk(DATA, true)
+  return out
+}
+
+const STOR_COLORS = { banner: '#7aa6d9', sticker: '#e0a96d', other: '#b49bd3', rest: '#9fb083' }
+function renderStorage() {
+  const box = document.getElementById('storagePanel')
+  if (!box) return
+  const imgs = collectImages()
+  const total = JSON.stringify(DATA).length
+  const sum = k => imgs.filter(i => i.kind === k).reduce((a, i) => a + i.src.length, 0)
+  const parts = [['banner', '배너', sum('banner')], ['sticker', '스티커', sum('sticker')], ['other', '기타 이미지', sum('other')]]
+  parts.push(['rest', '일정·할 일 등', Math.max(0, total - parts.reduce((a, p) => a + p[2], 0))])
+  box.innerHTML = `
+    <div class="stor-bar">${parts.map(([k, , n]) => `<i style="width:${(n / Math.max(1, total) * 100).toFixed(2)}%;background:${STOR_COLORS[k]}"></i>`).join('')}</div>
+    <div class="stor-legend">${parts.map(([k, l, n]) => `<span style="--c:${STOR_COLORS[k]}">${l} <b>${fmtSize(n)}</b></span>`).join('')}<span style="--c:transparent">합계 <b>${fmtSize(total)}</b></span></div>
+    <div class="stor-quota" id="storQuota"></div>
+    <div id="storList"></div>`
+  try {
+    navigator.storage.estimate().then(e => {
+      const q = document.getElementById('storQuota')
+      if (q && e && e.quota) q.textContent = `브라우저 저장 공간: ${fmtSize(e.usage || 0)} 사용 / 약 ${fmtSize(e.quota)} 중`
+    }).catch(() => {})
+  } catch (e) {}
+
+  const list = box.querySelector('#storList')
+  const top = imgs.slice().sort((a, b) => b.src.length - a.src.length).slice(0, 10)
+  if (!top.length) { list.innerHTML = '<p class="settings-note">저장된 이미지가 없어요</p>'; return }
+  const head = document.createElement('p'); head.className = 'settings-note'; head.textContent = '용량이 큰 이미지 순서예요. 줄이거나 지울 수 있어요.'
+  list.appendChild(head)
+  top.forEach(item => {
+    const row = document.createElement('div'); row.className = 'stor-row'
+    const img = document.createElement('img'); img.src = item.src; img.alt = ''
+    const name = document.createElement('div'); name.className = 'stor-name'; name.textContent = item.label; name.title = item.label
+    const size = document.createElement('div'); size.className = 'stor-size' + (item.src.length > 500 * 1024 ? ' big' : ''); size.textContent = fmtSize(item.src.length)
+    const reduce = document.createElement('button'); reduce.className = 'btn-ghost btn-sm'; reduce.textContent = '줄이기'
+    reduce.addEventListener('click', () => reduceImage(item, reduce))
+    row.append(img, name, size, reduce)
+    if (item.remove) {
+      const del = document.createElement('button'); del.className = 'btn-ghost btn-sm'; del.textContent = '삭제'
+      del.addEventListener('click', async () => {
+        if (!confirm(`${item.label} 이미지를 삭제할까요?`)) return
+        item.remove()
+        await save({ meta: true })
+        buildRightPanel(); renderStickers(); renderStickerRescue(); refreshBackupInfo()
+      })
+      row.appendChild(del)
+    }
+    list.appendChild(row)
+  })
+}
+
+async function reduceImage(item, btn) {
+  const before = item.src.length
+  btn.disabled = true; btn.textContent = '…'
+  try {
+    // 스티커는 화면에 그려지는 크기의 2배, 배너는 1200px 정도면 충분
+    const max = item.kind === 'banner' ? 1200
+      : item.st ? Math.min(600, Math.max(200, Math.ceil(Math.max(item.st.w || 90, item.st.h || 90) * 2))) : 400
+    const out = await window.api.compressImage(item.src, { max, alpha: item.kind !== 'banner' })
+    if (out.length >= before * 0.97) { showToast('더 줄일 수 없어요'); return }
+    item.set(out)
+    await save({ meta: true })
+    buildRightPanel(); renderStickers(); renderStickerRescue(); refreshBackupInfo()
+    showToast(`${fmtSize(before)} → ${fmtSize(out.length)} 로 줄였어요`)
+  } finally { btn.disabled = false; btn.textContent = '줄이기' }
 }
 
 async function optimizeAllImages() {
