@@ -1245,7 +1245,7 @@ body.stamp-mode .cal-card { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accen
 @keyframes fall { to { top: 105vh; rotate: 720deg; translate: 40px; } }
 
 /* 분위기 고르기 */
-.skin-picker { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 6px; }
+.skin-picker { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 6px; }
 .skin-opt { border: 2px solid var(--line); background: var(--paper); border-radius: 12px; padding: 8px; cursor: pointer;
   display: flex; flex-direction: column; gap: 3px; text-align: left; }
 .skin-opt.sel { border-color: var(--accent); }
@@ -1332,6 +1332,39 @@ body.skin-goods {
   .skin-goods .titlebar, .skin-goods .cal-header, .skin-goods .all-panel-header, .skin-goods .modal-header,
   .skin-goods .left-panel::before, .skin-goods .left-panel::after, .stamp-ghost.today { animation: none; }
 }
+
+/* ── 우주 분위기: 색은 그대로, 흰색·노란색 별(작은 원)만 얹음 ── */
+body.skin-space {
+  background-color: var(--bg);
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='360' height='360' viewBox='0 0 360 360'%3E%3Ccircle cx='60' cy='70' r='1.8' fill='%23ffffff' stroke='rgba(60,60,110,.30)' stroke-width='.5'/%3E%3Ccircle cx='250' cy='150' r='1.5' fill='%23ffd84a' stroke='rgba(130,95,0,.38)' stroke-width='.5'/%3E%3Ccircle cx='170' cy='300' r='1.2' fill='%23ffffff' stroke='rgba(60,60,110,.30)' stroke-width='.5'/%3E%3Ccircle cx='330' cy='250' r='1.5' fill='%23ffd84a' stroke='rgba(130,95,0,.38)' stroke-width='.5'/%3E%3Ccircle cx='310' cy='40' r='1' fill='%23ffd84a' stroke='rgba(130,95,0,.38)' stroke-width='.5'/%3E%3Ccircle cx='110' cy='200' r='1.1' fill='%23ffffff' stroke='rgba(60,60,110,.30)' stroke-width='.5'/%3E%3Ccircle cx='20' cy='320' r='1.1' fill='%23ffd84a' stroke='rgba(130,95,0,.38)' stroke-width='.5'/%3E%3Ccircle cx='200' cy='60' r='1' fill='%23ffffff' stroke='rgba(60,60,110,.30)' stroke-width='.5'/%3E%3Ccircle cx='290' cy='330' r='1.3' fill='%23ffffff' stroke='rgba(60,60,110,.30)' stroke-width='.5'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='470' height='470' viewBox='0 0 470 470'%3E%3Ccircle cx='370' cy='90' r='2' fill='%23ffd84a' stroke='rgba(130,95,0,.38)' stroke-width='.5'/%3E%3Ccircle cx='130' cy='380' r='1.5' fill='%23ffffff' stroke='rgba(60,60,110,.30)' stroke-width='.5'/%3E%3Ccircle cx='300' cy='330' r='1.2' fill='%23ffffff' stroke='rgba(60,60,110,.30)' stroke-width='.5'/%3E%3Ccircle cx='40' cy='150' r='1.5' fill='%23ffd84a' stroke='rgba(130,95,0,.38)' stroke-width='.5'/%3E%3Ccircle cx='60' cy='240' r='1.1' fill='%23ffffff' stroke='rgba(60,60,110,.30)' stroke-width='.5'/%3E%3Ccircle cx='210' cy='40' r='1.1' fill='%23ffd84a' stroke='rgba(130,95,0,.38)' stroke-width='.5'/%3E%3Ccircle cx='430' cy='260' r='1.2' fill='%23ffffff' stroke='rgba(60,60,110,.30)' stroke-width='.5'/%3E%3Ccircle cx='250' cy='200' r='1' fill='%23ffd84a' stroke='rgba(130,95,0,.38)' stroke-width='.5'/%3E%3Ccircle cx='400' cy='420' r='1.4' fill='%23ffffff' stroke='rgba(60,60,110,.30)' stroke-width='.5'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='610' height='610' viewBox='0 0 610 610'%3E%3Ccircle cx='500' cy='500' r='1.6' fill='%23ffffff' stroke='rgba(60,60,110,.30)' stroke-width='.5'/%3E%3Ccircle cx='90' cy='520' r='2' fill='%23ffd84a' stroke='rgba(130,95,0,.38)' stroke-width='.5'/%3E%3Ccircle cx='300' cy='230' r='1.4' fill='%23ffd84a' stroke='rgba(130,95,0,.38)' stroke-width='.5'/%3E%3Ccircle cx='560' cy='200' r='1.2' fill='%23ffffff' stroke='rgba(60,60,110,.30)' stroke-width='.5'/%3E%3Ccircle cx='560' cy='60' r='1.1' fill='%23ffffff' stroke='rgba(60,60,110,.30)' stroke-width='.5'/%3E%3Ccircle cx='200' cy='430' r='1.1' fill='%23ffd84a' stroke='rgba(130,95,0,.38)' stroke-width='.5'/%3E%3Ccircle cx='420' cy='380' r='1' fill='%23ffffff' stroke='rgba(60,60,110,.30)' stroke-width='.5'/%3E%3Ccircle cx='120' cy='90' r='1.5' fill='%23ffffff' stroke='rgba(60,60,110,.30)' stroke-width='.5'/%3E%3Ccircle cx='340' cy='560' r='1.2' fill='%23ffd84a' stroke='rgba(130,95,0,.38)' stroke-width='.5'/%3E%3C/svg%3E"),
+    radial-gradient(90% 60% at 8% 0%, color-mix(in srgb, var(--accent) 14%, transparent), #0000 65%),
+    radial-gradient(80% 60% at 100% 100%, color-mix(in srgb, var(--accent) 10%, transparent), #0000 65%);
+  background-size: 360px 360px, 470px 470px, 610px 610px, 100% 100%, 100% 100%;
+  background-attachment: fixed;
+}
+.skin-space .titlebar, .skin-space .cal-header, .skin-space .all-panel-header, .skin-space .modal-header {
+  background: linear-gradient(115deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 90%, #4c1d95) 60%, var(--accent) 100%) !important; }
+.skin-space .cal-card, .skin-space .right-panel { border-radius: 18px; border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--line));
+  box-shadow: 0 0 0 1px rgba(255,255,255,.04), 0 10px 34px color-mix(in srgb, var(--accent) 28%, transparent); }
+.skin-space .cal-header { border-radius: 17px 17px 0 0; }
+.skin-space .banner-area { border-radius: 17px 17px 0 0; }
+.skin-space .left-panel { position: relative; }
+.skin-space .left-panel::before, .skin-space .left-panel::after { content: ''; position: absolute; z-index: 5; pointer-events: none;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'%3E%3Ccircle cx='20' cy='20' r='7' fill='%23ffd84a' stroke='rgba(130,95,0,.38)' stroke-width='.5'/%3E%3C/svg%3E") center / contain no-repeat;
+  filter: drop-shadow(0 0 3px rgba(255,216,74,.7)); animation: twinkle 3s ease-in-out infinite; }
+.skin-space .left-panel::before { top: -12px; right: -8px; width: 24px; height: 24px; }
+.skin-space .left-panel::after { bottom: -8px; left: -8px; width: 16px; height: 16px; animation-delay: 1.4s; }
+.skin-space .cal-day.today { box-shadow: inset 0 0 0 2px var(--accent), 0 0 16px color-mix(in srgb, var(--accent) 55%, transparent); border-radius: 10px; }
+.skin-space .todo-card { border-radius: 14px; box-shadow: 0 0 0 1px var(--line), 0 4px 14px color-mix(in srgb, var(--accent) 16%, transparent); }
+.skin-space .tab-btn.active { box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 60%, transparent); }
+@media (prefers-reduced-motion: reduce) { .skin-space .left-panel::before, .skin-space .left-panel::after { animation: none; } }
+.skin-prev-space .skin-thumb { background-color: #0f1226; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='360' height='360' viewBox='0 0 360 360'%3E%3Ccircle cx='60' cy='70' r='1.8' fill='%23ffffff' stroke='rgba(60,60,110,.30)' stroke-width='.5'/%3E%3Ccircle cx='250' cy='150' r='1.5' fill='%23ffd84a' stroke='rgba(130,95,0,.38)' stroke-width='.5'/%3E%3Ccircle cx='170' cy='300' r='1.2' fill='%23ffffff' stroke='rgba(60,60,110,.30)' stroke-width='.5'/%3E%3Ccircle cx='330' cy='250' r='1.5' fill='%23ffd84a' stroke='rgba(130,95,0,.38)' stroke-width='.5'/%3E%3Ccircle cx='310' cy='40' r='1' fill='%23ffd84a' stroke='rgba(130,95,0,.38)' stroke-width='.5'/%3E%3Ccircle cx='110' cy='200' r='1.1' fill='%23ffffff' stroke='rgba(60,60,110,.30)' stroke-width='.5'/%3E%3Ccircle cx='20' cy='320' r='1.1' fill='%23ffd84a' stroke='rgba(130,95,0,.38)' stroke-width='.5'/%3E%3Ccircle cx='200' cy='60' r='1' fill='%23ffffff' stroke='rgba(60,60,110,.30)' stroke-width='.5'/%3E%3Ccircle cx='290' cy='330' r='1.3' fill='%23ffffff' stroke='rgba(60,60,110,.30)' stroke-width='.5'/%3E%3C/svg%3E"); background-size: 90px 90px; }
+.skin-prev-space .skin-thumb i:nth-child(1) { inset: 8px 38% 8px 8px; background: #1b2044; border-radius: 8px; box-shadow: 0 0 0 1px #4a52b8, 0 0 10px #6c73e855; }
+.skin-prev-space .skin-thumb i:nth-child(2) { top: 4px; right: 10px; width: 16px; height: 16px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'%3E%3Ccircle cx='20' cy='20' r='7' fill='%23ffd84a' stroke='rgba(130,95,0,.38)' stroke-width='.5'/%3E%3C/svg%3E") center / contain no-repeat; }
+.skin-prev-space .skin-thumb i:nth-child(3) { display: none; }
 
 /* 휴대폰 */
 @media (max-width: 760px) {
@@ -5257,7 +5290,7 @@ function setStickerShape(idx, shape) {
 }
 
 // ══════════════ 분위기 (스킨) ══════════════
-const SKINS = [['clean', '깔끔', '여백 넉넉한 카드형'], ['diary', '다이어리', '모눈종이·마스킹테이프'], ['goods', '굿즈', '홀로그램·반짝이']]
+const SKINS = [['clean', '깔끔', '여백 넉넉한 카드형'], ['diary', '다이어리', '모눈종이·마스킹테이프'], ['goods', '굿즈', '홀로그램·반짝이'], ['space', '우주', '별빛 가득한 밤하늘']]
 function applySkin() {
   const tab = DATA.tabs.find(t => t.id === curTabId)
   const skin = (tab && tab.skin) || (tab && tab.is_all && DATA.settings.allSkin) || 'clean'
@@ -5318,6 +5351,7 @@ function undoLast() {
   _selIdx = -1
   applyThemeVars(getCurTheme()); applyAccent(); applySkin()
   buildTabbar(); buildCalendar(); buildRightPanel(); renderStickers()
+  try { renderSkinPicker(); renderChipPicker(); initThemeGrid(); renderTabList() } catch (e) {}
   if (!document.getElementById('eventModal').classList.contains('hidden') && editingDate) { renderEventList(); renderEventStamps() }
   showToast(`'${u.label}'을(를) 되돌렸어요`)
 }
